@@ -2,6 +2,7 @@
 
 #include "SteamTestCharacter.h"
 
+#include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -53,19 +54,8 @@ ASteamTestCharacter::ASteamTestCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 
-	IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get();
-	if (OnlineSubsystem)
-	{
-		OnlineSessionInterface =  OnlineSubsystem->GetSessionInterface();
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(-1,
-				15.f,
-				FColor::Blue,
-				FString::Printf(TEXT("Found Subsystem %s"), *OnlineSubsystem->GetSubsystemName().ToString())
-				);
-		}
-	}
+	CreateSessionCompleteDelegate=FOnCreateSessionCompleteDelegate::CreateUObject(this , &ASteamTestCharacter::OnCreateSessionComplete);
+
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -98,7 +88,7 @@ void ASteamTestCharacter::BeginPlay()
 {
 
 	Super::BeginPlay();
-
+	
 	IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get();
 	if (OnlineSubsystem)
 	{
@@ -110,6 +100,58 @@ void ASteamTestCharacter::BeginPlay()
 				FColor::Blue,
 				FString::Printf(TEXT("Found Subsystem %s"), *OnlineSubsystem->GetSubsystemName().ToString())
 				);
+		}
+	}
+
+}
+
+void ASteamTestCharacter::CreateGameSession()
+{
+	if (!OnlineSessionInterface.IsValid())
+	{
+		return;
+	}
+	FNamedOnlineSession * ExistingSession = OnlineSessionInterface->GetNamedSession(NAME_GameSession);
+	if (ExistingSession != nullptr)
+	{
+		OnlineSessionInterface->DestroySession(NAME_GameSession);
+	}
+
+	OnlineSessionInterface->AddOnCreateSessionCompleteDelegate_Handle(CreateSessionCompleteDelegate);
+	
+	TSharedPtr<FOnlineSessionSettings> SessionSettings = MakeShareable(new FOnlineSessionSettings());
+	SessionSettings->bIsLANMatch = false;  //是否局域网 如果不设置这个 无法成功创建Session
+	SessionSettings->NumPublicConnections = 4;  //最多几人连接
+	SessionSettings->bAllowJoinInProgress = true; // 可以链接
+	SessionSettings->bAllowJoinViaPresence = true; // 通过Steam的区域加入房间？
+	SessionSettings->bShouldAdvertise  = true;   // 发起广告通知其他玩家
+	SessionSettings->bUsesPresence = true; //使用Steam的区域划分
+	SessionSettings->bUseLobbiesIfAvailable = true; // 很关键 不设置这个无法创建成功
+	
+	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
+	OnlineSessionInterface->CreateSession(*LocalPlayer->GetPreferredUniqueNetId(),NAME_GameSession, *SessionSettings);
+}
+
+void ASteamTestCharacter::OnCreateSessionComplete(FName SessionName, bool Success)
+{
+	if (Success)
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+-1,15.f,FColor::Red,
+FString::Printf(TEXT("Create Session Success : %s !") , *SessionName.ToString())
+			);
+		}
+	}
+	else
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+-1,15.f,FColor::Red,
+FString(TEXT("Fail on create Session !"))
+			);
 		}
 	}
 }

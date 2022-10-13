@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Interfaces/OnlineSessionInterface.h"
 #include "SteamTestCharacter.generated.h"
 
 UCLASS(config=Game)
@@ -65,8 +66,15 @@ public:
 public:
 	//class IOnlineSessionPtr OnlineSession;
 	//上述写法不成立的原因是类型不全  查看类型定义 是TSharedPtr<class IOnlineSession , ESPMode::ThreadSafe>的一种别名 
-	TSharedPtr<class IOnlineSession , ESPMode::ThreadSafe> OnlineSessionInterface;
+	IOnlineSessionPtr OnlineSessionInterface;
 
 	virtual void BeginPlay() override;
+
+	UFUNCTION(BlueprintCallable)
+	void CreateGameSession();
+
+	void OnCreateSessionComplete(FName SessionName, bool Success);
+private:
+	FOnCreateSessionCompleteDelegate CreateSessionCompleteDelegate;
 };
 
