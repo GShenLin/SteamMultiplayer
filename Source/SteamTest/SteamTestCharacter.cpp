@@ -54,8 +54,8 @@ ASteamTestCharacter::ASteamTestCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 
-	CreateSessionCompleteDelegate=FOnCreateSessionCompleteDelegate::CreateUObject(this , &ASteamTestCharacter::OnCreateSessionComplete);
-
+	CreateSessionCompleteDelegate = FOnCreateSessionCompleteDelegate::CreateUObject(this , &ThisClass::OnCreateSessionComplete);
+	FindSessionsCompleteDelegate = FOnFindSessionsCompleteDelegate::CreateUObject(this , &ThisClass::OnFindSessionComplete);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -132,6 +132,26 @@ void ASteamTestCharacter::CreateGameSession()
 	OnlineSessionInterface->CreateSession(*LocalPlayer->GetPreferredUniqueNetId(),NAME_GameSession, *SessionSettings);
 }
 
+void ASteamTestCharacter::JoinGameSession()
+{
+	if (!OnlineSessionInterface.IsValid())
+	{
+		return;
+	}
+
+	//将代理绑定到接口中
+	OnlineSessionInterface->AddOnFindSessionsCompleteDelegate_Handle(FindSessionsCompleteDelegate);
+	SessionSearch = MakeShareable(new FOnlineSessionSearch());
+	SessionSearch->MaxSearchResults = 10000; //如果使用的SteamAppID是480 是SpaceWar的测试用ID 会搜索到很多结果
+	SessionSearch->bIsLanQuery = false; //局域网？
+
+	//过滤搜索结果 只搜索特定状态下的Session
+	SessionSearch->QuerySettings.Set(SEARCH_PRESENCE,true,EOnlineComparisonOp::Equals);
+	
+	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
+	OnlineSessionInterface->FindSessions(*LocalPlayer->GetPreferredUniqueNetId(),SessionSearch.ToSharedRef());
+}
+
 void ASteamTestCharacter::OnCreateSessionComplete(FName SessionName, bool Success)
 {
 	if (Success)
@@ -154,6 +174,27 @@ FString(TEXT("Fail on create Session !"))
 			);
 		}
 	}
+}
+
+void ASteamTestCharacter::OnFindSessionComplete(bool bWasSuccessful)
+{
+	for (FOnlineSessionSearchResult Result : SessionSearch->SearchResults)
+	{
+		FString Id = Result.GetSessionIdStr();
+		FString User = Result.Session.OwningUserName;
+
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				15,
+				FColor::Blue,
+				FString::Printf(TEXT("ID: %s , UserName: %s") , *Id , *User )
+				
+			);
+		}
+	}
+	
 }
 
 void ASteamTestCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)
