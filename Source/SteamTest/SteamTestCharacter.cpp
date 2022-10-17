@@ -56,6 +56,7 @@ ASteamTestCharacter::ASteamTestCharacter()
 
 	CreateSessionCompleteDelegate = FOnCreateSessionCompleteDelegate::CreateUObject(this , &ThisClass::OnCreateSessionComplete);
 	FindSessionsCompleteDelegate = FOnFindSessionsCompleteDelegate::CreateUObject(this , &ThisClass::OnFindSessionComplete);
+	JoinSessionCompleteDelegate = FOnJoinSessionCompleteDelegate::CreateUObject(this , &ThisClass::OnJoinSessionComplete);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -127,6 +128,9 @@ void ASteamTestCharacter::CreateGameSession()
 	SessionSettings->bShouldAdvertise  = true;   // 发起广告通知其他玩家
 	SessionSettings->bUsesPresence = true; //使用Steam的区域划分
 	SessionSettings->bUseLobbiesIfAvailable = true; // 很关键 不设置这个无法创建成功
+	//查找特定类型的比赛 具体多看下Set函数 支持多种值得类型参数 这里只是一个示例 最后一个参数表示同时可以通过OnlineServeice和ping找到Session
+	SessionSettings->Set(FName("MatchType")  , FString("FreeForAll"),EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	
 	
 	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
 	OnlineSessionInterface->CreateSession(*LocalPlayer->GetPreferredUniqueNetId(),NAME_GameSession, *SessionSettings);
@@ -163,6 +167,19 @@ void ASteamTestCharacter::OnCreateSessionComplete(FName SessionName, bool Succes
 FString::Printf(TEXT("Create Session Success : %s !") , *SessionName.ToString())
 			);
 		}
+		UWorld * World  = GetWorld();
+		if (World)
+		{
+			bool bSuccessfulTravel  = World->ServerTravel(FString("/Game/Level/Lobby?listen"));
+			if (bSuccessfulTravel)
+			{
+				UE_LOG(LogTemp , Warning , TEXT("SuccessfulTravel"));
+			}
+			else
+			{
+				UE_LOG(LogTemp , Warning , TEXT("Travel Failure"));
+			}
+		}
 	}
 	else
 	{
@@ -178,11 +195,20 @@ FString(TEXT("Fail on create Session !"))
 
 void ASteamTestCharacter::OnFindSessionComplete(bool bWasSuccessful)
 {
+	
+	if (!OnlineSessionInterface.IsValid())
+	{
+		return;
+	}
+	
+	
 	for (FOnlineSessionSearchResult Result : SessionSearch->SearchResults)
 	{
 		FString Id = Result.GetSessionIdStr();
 		FString User = Result.Session.OwningUserName;
 
+		FString MatchType;
+		Result.Session.SessionSettings.Get(FName("MatchType")  , MatchType);
 		if (GEngine)
 		{
 			GEngine->AddOnScreenDebugMessage(
@@ -193,8 +219,36 @@ void ASteamTestCharacter::OnFindSessionComplete(bool bWasSuccessful)
 				
 			);
 		}
+		if (MatchType == FString("FreeForAll"))
+		{
+			// 这里就已经找到房间
+			//在查找成功后 绑定加入的代理
+			OnlineSessionInterface->AddOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegate);
+
+			//加入房间
+			const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
+			OnlineSessionInterface->JoinSession(*LocalPlayer->GetPreferredUniqueNetId(),NAME_GameSession,Result);
+		}
 	}
-	
+}
+
+void ASteamTestCharacter::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type ResultType)
+{
+	if (!OnlineSessionInterface.IsValid())
+	{
+		return;
+	}
+	FString Address;
+	bool bJoinSuccessful = OnlineSessionInterface->GetResolvedConnectString(NAME_GameSession,Address);
+	if (bJoinSuccessful)
+	{
+		UE_LOG(LogTemp , Warning , TEXT("JoinSuccessful : %s"), *Address);
+		APlayerController * PlayerController = GetGameInstance()->GetFirstLocalPlayerController();
+		if (PlayerController)
+		{
+			PlayerController->ClientTravel(Address,ETravelType::TRAVEL_Absolute);
+		}
+	}
 }
 
 void ASteamTestCharacter::TouchStarted(ETouchIndex::Type FingerIndex, FVector Location)

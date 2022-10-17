@@ -80,11 +80,15 @@ public:
 	void OnCreateSessionComplete(FName SessionName, bool Success);
 
 	void OnFindSessionComplete(bool bWasSuccessful);
+	
+	void OnJoinSessionComplete(FName SessionName , EOnJoinSessionCompleteResult::Type ResultType);
 private:
 	FOnCreateSessionCompleteDelegate CreateSessionCompleteDelegate;
 
 	FOnFindSessionsCompleteDelegate FindSessionsCompleteDelegate;
 
 	TSharedPtr<FOnlineSessionSearch> SessionSearch;
+
+	FOnJoinSessionCompleteDelegate JoinSessionCompleteDelegate;
 };
 
