@@ -5,8 +5,11 @@
 #include "MultiplayerSessionSubsystem.h"
 #include "Components/Button.h"
 
-void UGSLMultiplayerMenu::MenuSetup()
+void UGSLMultiplayerMenu::MenuSetup(int NumberOfPublicConnection , FString TypeOfMatch )
 {
+	NumPublicConnections = NumberOfPublicConnection;
+	MatchType = TypeOfMatch;
+	
 	AddToViewport();
 	SetVisibility(ESlateVisibility::Visible);
 	bIsFocusable = true;
@@ -38,6 +41,9 @@ bool UGSLMultiplayerMenu::Initialize()
 	 {
 	 	return false;
 	 }
+	NumPublicConnections = 4;
+	MatchType = TEXT("FreeForAll");
+	
 	 if (HostButton)
 	 {
 		 HostButton->OnClicked.AddDynamic(this,&ThisClass::HostButtonClicked);
@@ -49,16 +55,48 @@ bool UGSLMultiplayerMenu::Initialize()
 	return true;
 }
 
+void UGSLMultiplayerMenu::OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld)
+{
+	MenuTearDown();
+	Super::OnLevelRemovedFromWorld(InLevel, InWorld);
+}
+
 void UGSLMultiplayerMenu::HostButtonClicked()
 {
 	UE_LOG(LogTemp , Warning , TEXT("Host ButtonClicked"));
 	if (MultiplayerSessionSubsystem)
 	{
-		MultiplayerSessionSubsystem->CreateSession(4,FString("FreeForAll"));
+		bool bCreateSuccessful = MultiplayerSessionSubsystem->CreateSession(NumPublicConnections,MatchType);
+		UWorld * World = GetWorld();
+		if (bCreateSuccessful  && IsValid(World))
+		{
+			World->ServerTravel("/Game/Level/Lobby");
+		}
+		else
+		{
+			UE_LOG(LogTemp , Warning , TEXT("CreateSessionFail  OnMenuClicked")); 
+		}
 	}
+	
 }
 
 void UGSLMultiplayerMenu::JoinButtonClicked()
 {
 	UE_LOG(LogTemp , Warning , TEXT("Join ButtonClicked"));
+}
+
+void UGSLMultiplayerMenu::MenuTearDown()
+{
+	RemoveFromParent();
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		APlayerController * PlayerController = World->GetFirstPlayerController();
+		if (PlayerController)
+		{
+			FInputModeGameOnly InputModeData;
+			PlayerController->SetInputMode(InputModeData);
+			PlayerController->SetShowMouseCursor(false);
+		}
+	}
 }

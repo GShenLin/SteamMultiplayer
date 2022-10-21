@@ -3,6 +3,7 @@
 
 #include "MultiplayerSessionSubsystem.h"
 #include "OnlineSubsystem.h"
+#include "OnlineSessionSettings.h"
 
 UMultiplayerSessionSubsystem::UMultiplayerSessionSubsystem()
 {
@@ -19,9 +20,41 @@ UMultiplayerSessionSubsystem::UMultiplayerSessionSubsystem()
 	StartSessionCompleteDelegate = FOnStartSessionCompleteDelegate::CreateUObject(this,&ThisClass::OnStartSessionComplete);
 }
 
-void UMultiplayerSessionSubsystem::CreateSession(int32 NumPublicConnections, FString MatchType)
+bool UMultiplayerSessionSubsystem::CreateSession(int32 NumPublicConnections, FString MatchType)
 {
-	
+	if (!SessionInterface.IsValid())
+	{
+		return false;
+	}
+
+	auto ExistingSession = SessionInterface->GetNamedSession(NAME_GameSession);
+	if (ExistingSession != nullptr)
+	{
+		SessionInterface->DestroySession(NAME_GameSession);
+	}
+	//Store the delegate in a FDelegateHandle so we can remove it later
+	CreateSessionCompleteHandle = SessionInterface->AddOnCreateSessionCompleteDelegate_Handle(CreateSessionCompleteDelegate);
+
+	LastSessionSettings = MakeShareable(new FOnlineSessionSettings());
+	//这个会返回NULL 如果是设置了Steam为默认使用的Subsystem会返回Steam 否则是NULL
+	LastSessionSettings->bIsLANMatch = IOnlineSubsystem::Get()->GetSubsystemName() == "NULL" ? true : false;
+	LastSessionSettings->NumPublicConnections=NumPublicConnections;
+	LastSessionSettings->bAllowJoinInProgress=true;
+	LastSessionSettings->bAllowJoinViaPresence = true;
+	LastSessionSettings->bShouldAdvertise = true;
+	LastSessionSettings->bUsesPresence = true;
+	//查找特定类型的比赛 具体多看下Set函数 支持多种值得类型参数 这里只是一个示例 最后一个参数表示同时可以通过OnlineServeice和ping找到Session
+	LastSessionSettings->Set(FName("MatchType")  , MatchType,EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
+	bool  bCreateSessionSuccess =  SessionInterface->CreateSession( *LocalPlayer->GetPreferredUniqueNetId(),NAME_GameSession, *LastSessionSettings);
+	if (bCreateSessionSuccess)
+	{
+		//如果创建成功 委托就会被调用 这时就可以清除委托的绑定了
+		SessionInterface->ClearOnCreateSessionCompleteDelegate_Handle(CreateSessionCompleteHandle);
+		return true;
+	}
+	return false;
 }
 
 void UMultiplayerSessionSubsystem::FindSession(int32 MaxSearchResults)
@@ -43,6 +76,10 @@ void UMultiplayerSessionSubsystem::StartSession()
 
 void UMultiplayerSessionSubsystem::OnCreateSessionComplete(FName SessionName, bool bWasSuccessful)
 {
+	if (bWasSuccessful)
+	{
+		
+	}
 }
 
 void UMultiplayerSessionSubsystem::OnFindSessionsComplete(bool bWasSuccessful)

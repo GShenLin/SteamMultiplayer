@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "OnlineSessionSettings.h"
+
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "MultiplayerSessionSubsystem.generated.h"
@@ -19,7 +19,7 @@ class MULTIPLAYERSESSION_API UMultiplayerSessionSubsystem : public UGameInstance
 public:
 	UMultiplayerSessionSubsystem();
 
-	void CreateSession(int32 NumPublicConnections, FString MatchType);
+	bool CreateSession(int32 NumPublicConnections, FString MatchType);
 	void FindSession(int32 MaxSearchResults);
 	void JoinSession(const FOnlineSessionSearchResult& SessionResult);
 	void DestroySession();
@@ -36,6 +36,9 @@ protected:
 	
 private:
 	IOnlineSessionPtr SessionInterface;
+
+	TSharedPtr<FOnlineSessionSettings> LastSessionSettings ;
+	
 	// To add to the Online Session Interface delegate list .
 	// We'll bind our MultiplayerSessionSubsystem internal callback to these.
 	FOnCreateSessionCompleteDelegate CreateSessionCompleteDelegate;
