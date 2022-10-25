@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Interfaces/OnlineSessionInterface.h"
 #include "GSLMultiplayerMenu.generated.h"
 
 UCLASS()
@@ -13,7 +14,19 @@ class MULTIPLAYERSESSION_API UGSLMultiplayerMenu : public UUserWidget
 public:
 	UFUNCTION(BlueprintCallable)
 	void MenuSetup(int NumberOfPublicConnection = 4, FString TypeOfMatch = FString(TEXT("FreeForAll")));
-	
+
+	UFUNCTION()
+	void OnCreateSession(bool bWasSuccessful);
+
+	void OnFindSessions(const TArray<FOnlineSessionSearchResult>& SessionResult , bool bWasSuccessful );
+
+	void OnJoinSession(EOnJoinSessionCompleteResult::Type Result);
+
+	UFUNCTION()
+	void OnDestroySession(bool bWasSuccessful);
+
+	UFUNCTION()
+	void OnStartSession(bool bWasSuccessful);
 	
 protected:
 	//比较好的绑定回调的地方

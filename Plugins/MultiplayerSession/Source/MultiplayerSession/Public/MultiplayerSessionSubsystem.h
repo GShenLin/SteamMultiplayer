@@ -11,6 +11,13 @@
 /**
  * 
  */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultiplayerOnCreateSessionComplete,bool , bWasSuccessful);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FMultiplayerOnFindSessionComplete, const TArray<FOnlineSessionSearchResult>& SessionResult , bool bWasSuccessful );
+DECLARE_MULTICAST_DELEGATE_OneParam(FMultiplayerOnJoinSessionComplete, EOnJoinSessionCompleteResult::Type Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultplayerOnDestroySessionComplete , bool , bWasSuccessful);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultplayerOnStartSessionComplete , bool , bWasSuccessful);
+
+
 UCLASS()
 class MULTIPLAYERSESSION_API UMultiplayerSessionSubsystem : public UGameInstanceSubsystem
 {
@@ -25,6 +32,14 @@ public:
 	void DestroySession();
 	void StartSession();
 
+	//在创建Session时广播一次false  创建成功后广播一次 广播Delegate本身的结果
+	FMultiplayerOnCreateSessionComplete MultiplayerOnCreateSessionComplete;
+	FMultiplayerOnFindSessionComplete MultiplayerOnFindSessionComplete;
+	FMultiplayerOnJoinSessionComplete MultiplayerOnJoinSessionComplete;
+	FMultplayerOnDestroySessionComplete MultplayerOnDestroySessionComplete;
+	FMultplayerOnStartSessionComplete MultplayerOnStartSessionComplete;
+	
+	
 protected:
 	//Internal callbacks for the delegates we'll add to the Online Session Interface Delegate list
 	//  These don't need to be called outside this class
@@ -38,6 +53,7 @@ private:
 	IOnlineSessionPtr SessionInterface;
 
 	TSharedPtr<FOnlineSessionSettings> LastSessionSettings ;
+	TSharedPtr<FOnlineSessionSearch> LastSessionSearch;
 	
 	// To add to the Online Session Interface delegate list .
 	// We'll bind our MultiplayerSessionSubsystem internal callback to these.
