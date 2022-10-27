@@ -7,8 +7,10 @@
 #include "OnlineSubsystem.h"
 #include "Components/Button.h"
 
-void UGSLMultiplayerMenu::MenuSetup(int NumberOfPublicConnection , FString TypeOfMatch )
+void UGSLMultiplayerMenu::MenuSetup(int NumberOfPublicConnection , FString TypeOfMatch , FString LobbyPath )
 {
+	LobbyListenPath = FString::Printf(TEXT("%s?listen"),*LobbyPath);
+	
 	NumPublicConnections = NumberOfPublicConnection;
 	MatchType = TypeOfMatch;
 	
@@ -41,7 +43,7 @@ void UGSLMultiplayerMenu::MenuSetup(int NumberOfPublicConnection , FString TypeO
 		MultiplayerSessionSubsystem->MultiplayerOnCreateSessionComplete.AddDynamic(this, &ThisClass::OnCreateSession);
 		MultiplayerSessionSubsystem->MultiplayerOnFindSessionComplete.AddUObject(this , &ThisClass::OnFindSessions);
 		MultiplayerSessionSubsystem->MultiplayerOnJoinSessionComplete.AddUObject(this , &ThisClass::OnJoinSession);
-		MultiplayerSessionSubsystem->MultplayerOnDestroySessionComplete.AddDynamic(this , &ThisClass::OnDestroySession);
+		MultiplayerSessionSubsystem->MultiplayerOnDestroySessionComplete.AddDynamic(this , &ThisClass::OnDestroySession);
 		MultiplayerSessionSubsystem->MultplayerOnStartSessionComplete.AddDynamic(this , &ThisClass::OnStartSession);
 	}
 }
@@ -54,16 +56,18 @@ void UGSLMultiplayerMenu::OnCreateSession(bool bWasSuccessful)
 		UWorld * World = GetWorld();
 		if (IsValid(World))
 		{
-			World->ServerTravel("/Game/Level/Lobby?listen");
+			World->ServerTravel(LobbyListenPath);
 		}
 		else
 		{
-			UE_LOG(LogTemp , Warning , TEXT("World NULL  : Menu")); 
+			UE_LOG(LogTemp , Warning , TEXT("World NULL  : Menu"));
+			HostButton->SetIsEnabled(true);
 		}
 	}
 	else
 	{
-		UE_LOG(LogTemp , Warning , TEXT("CreateSessionFail : Menu")); 
+		UE_LOG(LogTemp , Warning , TEXT("CreateSessionFail : Menu"));
+		HostButton->SetIsEnabled(true);
 	}
 }
 
@@ -86,6 +90,10 @@ void UGSLMultiplayerMenu::OnFindSessions(const TArray<FOnlineSessionSearchResult
 		}
 	}
 	UE_LOG(LogTemp , Warning , TEXT("Join Session Failure , No Matching Session : Menu"));
+	if (bWasSuccessful || SessionResult.Num() == 0)
+	{
+		JoinButton->SetIsEnabled(true);
+	}
 }
 
 void UGSLMultiplayerMenu::OnJoinSession(EOnJoinSessionCompleteResult::Type Result)
@@ -112,6 +120,10 @@ void UGSLMultiplayerMenu::OnJoinSession(EOnJoinSessionCompleteResult::Type Resul
 				}
 			}
 		}
+	}
+	if (Result != EOnJoinSessionCompleteResult::Success)
+	{
+		JoinButton->SetIsEnabled(true);
 	}
 }
 
@@ -151,16 +163,16 @@ void UGSLMultiplayerMenu::OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWor
 
 void UGSLMultiplayerMenu::HostButtonClicked()
 {
-	
+	HostButton->SetIsEnabled(false);
 	if (MultiplayerSessionSubsystem)
 	{
 		bool bCreateSuccessful = MultiplayerSessionSubsystem->CreateSession(NumPublicConnections,MatchType);
 	}
-	
 }
 
 void UGSLMultiplayerMenu::JoinButtonClicked()
 {
+	JoinButton->SetIsEnabled(false);
 	if (MultiplayerSessionSubsystem)
 	{
 		//可能有很多开发者使用测试的SteamAppID 所以多搜索些

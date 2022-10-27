@@ -36,7 +36,7 @@ public:
 	FMultiplayerOnCreateSessionComplete MultiplayerOnCreateSessionComplete;
 	FMultiplayerOnFindSessionComplete MultiplayerOnFindSessionComplete;
 	FMultiplayerOnJoinSessionComplete MultiplayerOnJoinSessionComplete;
-	FMultplayerOnDestroySessionComplete MultplayerOnDestroySessionComplete;
+	FMultplayerOnDestroySessionComplete MultiplayerOnDestroySessionComplete;
 	FMultplayerOnStartSessionComplete MultplayerOnStartSessionComplete;
 	
 	
@@ -71,5 +71,9 @@ private:
 	
 	FOnStartSessionCompleteDelegate StartSessionCompleteDelegate;
 	FDelegateHandle StartSessionCompleteHandle;
-	
+
+	//若已有Session存在 就先把CreateSession的信息保存下来 等DestroySession完成 再发起创建
+	bool bCreateSessionOnDestroy{false};
+	int32 LastNumPublicConnections;
+	FString LastMatchType;
 };

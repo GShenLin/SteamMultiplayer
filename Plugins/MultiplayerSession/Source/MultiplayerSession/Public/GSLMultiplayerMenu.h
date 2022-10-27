@@ -13,7 +13,7 @@ class MULTIPLAYERSESSION_API UGSLMultiplayerMenu : public UUserWidget
 	GENERATED_BODY()
 public:
 	UFUNCTION(BlueprintCallable)
-	void MenuSetup(int NumberOfPublicConnection = 4, FString TypeOfMatch = FString(TEXT("FreeForAll")));
+	void MenuSetup(int NumberOfPublicConnection = 4, FString TypeOfMatch = FString(TEXT("FreeForAll")) , FString LobbyPath = "");
 
 	UFUNCTION()
 	void OnCreateSession(bool bWasSuccessful);
@@ -51,6 +51,6 @@ private:
 	class UMultiplayerSessionSubsystem * MultiplayerSessionSubsystem;
 	int  NumPublicConnections;
 	FString MatchType;
-
+	FString LobbyListenPath;
 	
 };
